@@ -1,11 +1,8 @@
 [package]
-name = "prost-yat"
+name = "prost-yat-build"
 version = "0.1.0"
 authors = ["Lee Olayvar <leeola@fastmail.com>"]
 edition = "2018"
 
 [dependencies]
-prost = "0.4.0"
-serde_derive = "1.0.84"
-serde = "1.0.84"
-prost-derive = "0.4.0"
+prost-build = "0.4.0"
