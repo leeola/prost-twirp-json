@@ -1,0 +1,9 @@
+[package]
+name = "example"
+version = "0.1.0"
+authors = ["Lee Olayvar <leeola@fastmail.com>"]
+edition = "2018"
+
+[build-dependencies]
+prost-twirp-json = { path = ".." }
+prost-build = "0.4.0"
