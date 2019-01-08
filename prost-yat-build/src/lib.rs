@@ -29,16 +29,67 @@ impl Twirp {
     buf.push_str(&format!("pub struct {} {{\n", self.server_type(s)));
     buf.push_str(&format!("  service_impl: {},\n", s.name));
     buf.push_str("}\n\n");
-    buf.push_str(&format!("impl {}{{\n", self.server_type(s)));
+    buf.push_str(&format!("impl {}{{", self.server_type(s)));
     self.write_func_new(s, buf);
+    self.write_func_listen(s, buf);
+    self.write_func_route(s, buf);
     buf.push_str("}\n");
   }
 
   fn write_func_new(&self, s: &Service, buf: &mut String) {
-    buf.push_str(&format!("  pub fn new(service_impl: {}) -> {} {{\n", s.name, self.server_type(s)));
+    buf.push_str("\n");
+    buf.push_str(&format!(
+      "  pub fn new(service_impl: {}) -> {} {{\n",
+      s.name,
+      self.server_type(s)
+    ));
     buf.push_str(&format!("    {} {{\n", s.name));
     buf.push_str("      service_impl: service_impl,\n");
     buf.push_str("    }\n");
+    buf.push_str("  }\n");
+  }
+
+  fn write_func_listen(&self, _s: &Service, buf: &mut String) {
+    buf.push_str("\n");
+    // TODO(leeola): perhaps return a future from this or a related func?
+    // to allow for handling errors by the API caller. For now though,
+    // it's being handled ignorantly.
+
+    // moving self into listen, so it can be moved into the closure.
+    buf.push_str("  pub fn listen(self, addr: &::std::net::SocketAddr) {{\n");
+    buf.push_str("    hyper::rt::run(future::lazy(move || {\n");
+    buf.push_str("      let service_impl = ::std::sync::Arc::new(self.service_impl);\n");
+    buf.push_str("      let server = Server::bind(&addr)");
+    buf.push_str("        .serve(move || {\n");
+    buf.push_str("          let service_impl = service_impl.clone();\n");
+    buf.push_str("          service::service_fn(move |req| Self::route(service_impl, req))\n");
+    buf.push_str("        })\n");
+    buf.push_str("        .map_err(|e| eprintln!(\"server error: {}\", e));");
+    buf.push_str("      server\n");
+    buf.push_str("    }\n");
+    buf.push_str("  }\n");
+  }
+
+  fn write_func_route(&self, s: &Service, buf: &mut String) {
+    buf.push_str("\n");
+    // TODO(leeola): perhaps return a future from this or a related func?
+    // to allow for handling errors by the API caller. For now though,
+    // it's being handled ignorantly.
+
+    // moving self into listen, so it can be moved into the closure.
+    buf.push_str(&format!(
+      "  pub fn route(
+        service_impl: ::std::sync::Arc<{}>,
+        req: ::hyper::Request<::hyper::Body>
+      ) -> Box<\
+        ::hyper::rt::Future<Item = ::hyper::Response<::hyper::Body>, Error = hyper::Error\
+      > + Send> {{\n",
+    self.server_type(s)));
+    buf.push_str(
+      "    Box::new(future::ok(\
+             Response::new(Body::from(\"not implemented\"))\
+           ));\n",
+    );
     buf.push_str("  }\n");
   }
 
