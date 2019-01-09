@@ -6,6 +6,9 @@ edition = "2018"
 
 [dependencies]
 prost-yat = { path = ".." }
+bytes = "0.4.11"
+prost-derive = "0.4.0"
+prost = "0.4.0"
 
 [build-dependencies]
 prost-yat-build = { path = "../prost-yat-build" }
