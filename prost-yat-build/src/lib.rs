@@ -32,7 +32,7 @@ impl Twirp {
     buf.push_str(&format!("impl<S: Haberdasher+Send+Sync+'static> {}<S> {{", self.server_type(s)));
     self.write_func_new(s, buf);
     self.write_func_listen(s, buf);
-    // self.write_func_route(s, buf);
+    self.write_func_route(s, buf);
     buf.push_str("}\n");
   }
 
@@ -63,10 +63,7 @@ impl Twirp {
     buf.push_str("        .serve(move || {\n");
     buf.push_str("          let service_impl = service_impl.clone();\n");
     // buf.push_str("          service::service_fn(move |req| Self::route(service_impl, req))\n");
-    // buf.push_str("          ::hyper::service::service_fn(move |req| {
-    //                           ::futures::future::ok(::hyper::Response::new(::hyper::Body::from(
-    //                             \"rpc routing not implemented\")))
-    //                         })\n");
+    // buf.push_str("          ::hyper::service::service_fn(move |req| Self::route(service_impl, req))\n");
     buf.push_str("          ::hyper::service::service_fn_ok(move |req| {
                               ::hyper::Response::new(::hyper::Body::from(\"rpc routing not implemented\"))
                             })");
@@ -86,17 +83,17 @@ impl Twirp {
     // moving self into listen, so it can be moved into the closure.
     buf.push_str(&format!(
       "  pub fn route(
-        service_impl: ::std::sync::Arc<{}>,
+        service_impl: ::std::sync::Arc<{}<S>>,
         req: ::hyper::Request<::hyper::Body>
       ) -> Box<\
-        ::hyper::rt::Future<Item = ::hyper::Response<::hyper::Body>, Error = hyper::Error\
+        ::futures::Future<Item = ::hyper::Response<::hyper::Body>, Error = hyper::Error\
       > + Send> {{\n",
       self.server_type(s)
     ));
     buf.push_str(
-      "    Box::new(future::ok(\
-       Response::new(Body::from(\"not implemented\"))\
-       ));\n",
+      "    Box::new(::futures::future::ok(\
+        ::hyper::Response::new(::hyper::Body::from(\"routing not implemented\"))\
+       ))\n",
     );
     buf.push_str("  }\n");
   }
