@@ -26,24 +26,23 @@ impl Twirp {
   }
 
   fn write_server(&self, s: &Service, buf: &mut String) {
-    buf.push_str(&format!("pub struct {} {{\n", self.server_type(s)));
-    buf.push_str(&format!("  service_impl: {},\n", s.name));
+    buf.push_str(&format!("pub struct {}<S: Haberdasher> {{\n", self.server_type(s)));
+    buf.push_str(&format!("  service_impl: S,\n"));
     buf.push_str("}\n\n");
-    buf.push_str(&format!("impl {}{{", self.server_type(s)));
+    buf.push_str(&format!("impl<S: Haberdasher> {}<S> {{", self.server_type(s)));
     self.write_func_new(s, buf);
-    self.write_func_listen(s, buf);
-    self.write_func_route(s, buf);
+    // self.write_func_listen(s, buf);
+    // self.write_func_route(s, buf);
     buf.push_str("}\n");
   }
 
   fn write_func_new(&self, s: &Service, buf: &mut String) {
     buf.push_str("\n");
     buf.push_str(&format!(
-      "  pub fn new(service_impl: {}) -> {} {{\n",
-      s.name,
-      self.server_type(s)
+      "  pub fn new(service_impl: S) -> {}<S> {{\n",
+      self.server_type(s),
     ));
-    buf.push_str(&format!("    {} {{\n", s.name));
+    buf.push_str(&format!("    {} {{\n", self.server_type(s)));
     buf.push_str("      service_impl: service_impl,\n");
     buf.push_str("    }\n");
     buf.push_str("  }\n");
@@ -84,11 +83,12 @@ impl Twirp {
       ) -> Box<\
         ::hyper::rt::Future<Item = ::hyper::Response<::hyper::Body>, Error = hyper::Error\
       > + Send> {{\n",
-    self.server_type(s)));
+      self.server_type(s)
+    ));
     buf.push_str(
       "    Box::new(future::ok(\
-             Response::new(Body::from(\"not implemented\"))\
-           ));\n",
+       Response::new(Body::from(\"not implemented\"))\
+       ));\n",
     );
     buf.push_str("  }\n");
   }
