@@ -87,9 +87,32 @@ impl Twirp {
       > + Send> {{\n",
       s.name,
     ));
+    buf.push_str("    if req.method() != ::hyper::Method::POST { \n");
+    buf.push_str(
+      "      return Box::new(::futures::future::ok(\
+        ::hyper::Response::new(::hyper::Body::from(\"method not found\"))\
+       ));\n",
+    );
+    buf.push_str("    }\n");
+    buf.push_str("    match req.uri().path() {\n");
+    for m in s.methods.iter() {
+     buf.push_str(&format!(
+      "      \"/twirp/{}/{}\" => return Box::new(::futures::future::ok(\
+        ::hyper::Response::new(::hyper::Body::from(\"rpc call not implemented\"))\
+       )),\n",
+       s.package,
+       m.proto_name,
+    ));
+    }
+    buf.push_str(
+      "      _ => return Box::new(::futures::future::ok(\
+        ::hyper::Response::new(::hyper::Body::from(\"route not found\"))\
+       )),\n",
+    );
+    buf.push_str("    }\n");
     buf.push_str(
       "    Box::new(::futures::future::ok(\
-        ::hyper::Response::new(::hyper::Body::from(\"routing not implemented\"))\
+        ::hyper::Response::new(::hyper::Body::from(\"not implemented\"))\
        ))\n",
     );
     buf.push_str("  }\n");
