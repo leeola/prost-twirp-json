@@ -26,12 +26,12 @@ impl Twirp {
   }
 
   fn write_server(&self, s: &Service, buf: &mut String) {
-    buf.push_str(&format!("pub struct {}<S: Haberdasher> {{\n", self.server_type(s)));
+    buf.push_str(&format!("pub struct {}<S: Haberdasher+Send+Sync+'static> {{\n", self.server_type(s)));
     buf.push_str(&format!("  service_impl: S,\n"));
     buf.push_str("}\n\n");
-    buf.push_str(&format!("impl<S: Haberdasher> {}<S> {{", self.server_type(s)));
+    buf.push_str(&format!("impl<S: Haberdasher+Send+Sync+'static> {}<S> {{", self.server_type(s)));
     self.write_func_new(s, buf);
-    // self.write_func_listen(s, buf);
+    self.write_func_listen(s, buf);
     // self.write_func_route(s, buf);
     buf.push_str("}\n");
   }
@@ -55,17 +55,25 @@ impl Twirp {
     // it's being handled ignorantly.
 
     // moving self into listen, so it can be moved into the closure.
-    buf.push_str("  pub fn listen(self, addr: &::std::net::SocketAddr) {{\n");
-    buf.push_str("    hyper::rt::run(future::lazy(move || {\n");
-    buf.push_str("      let service_impl = ::std::sync::Arc::new(self.service_impl);\n");
-    buf.push_str("      let server = Server::bind(&addr)");
+    buf.push_str("  pub fn listen(self, addr: ::std::net::SocketAddr) {\n");
+    buf.push_str("    use ::futures::Future;\n");
+    buf.push_str("    let service_impl = ::std::sync::Arc::new(self.service_impl);\n");
+    buf.push_str("    ::hyper::rt::run(::futures::future::lazy(move || {\n");
+    buf.push_str("      let server = ::hyper::Server::bind(&addr)\n");
     buf.push_str("        .serve(move || {\n");
     buf.push_str("          let service_impl = service_impl.clone();\n");
-    buf.push_str("          service::service_fn(move |req| Self::route(service_impl, req))\n");
+    // buf.push_str("          service::service_fn(move |req| Self::route(service_impl, req))\n");
+    // buf.push_str("          ::hyper::service::service_fn(move |req| {
+    //                           ::futures::future::ok(::hyper::Response::new(::hyper::Body::from(
+    //                             \"rpc routing not implemented\")))
+    //                         })\n");
+    buf.push_str("          ::hyper::service::service_fn_ok(move |req| {
+                              ::hyper::Response::new(::hyper::Body::from(\"rpc routing not implemented\"))
+                            })");
     buf.push_str("        })\n");
     buf.push_str("        .map_err(|e| eprintln!(\"server error: {}\", e));");
     buf.push_str("      server\n");
-    buf.push_str("    }\n");
+    buf.push_str("    }));\n");
     buf.push_str("  }\n");
   }
 
