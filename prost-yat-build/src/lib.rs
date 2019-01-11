@@ -26,10 +26,16 @@ impl Twirp {
   }
 
   fn write_server(&self, s: &Service, buf: &mut String) {
-    buf.push_str(&format!("pub struct {}<S: Haberdasher+Send+Sync+'static> {{\n", self.server_type(s)));
+    buf.push_str(&format!(
+      "pub struct {}<S: Haberdasher+Send+Sync+'static> {{\n",
+      self.server_type(s)
+    ));
     buf.push_str(&format!("  service_impl: S,\n"));
     buf.push_str("}\n\n");
-    buf.push_str(&format!("impl<S: Haberdasher+Send+Sync+'static> {}<S> {{", self.server_type(s)));
+    buf.push_str(&format!(
+      "impl<S: Haberdasher+Send+Sync+'static> {}<S> {{",
+      self.server_type(s)
+    ));
     self.write_func_new(s, buf);
     self.write_func_listen(s, buf);
     self.write_func_route(s, buf);
@@ -62,7 +68,9 @@ impl Twirp {
     buf.push_str("        .serve(move || {\n");
     buf.push_str("          // TODO: remove this clone if possible?;\n");
     buf.push_str("          let service_impl = service_impl.clone();\n");
-    buf.push_str("          ::hyper::service::service_fn(move |req| Self::route(service_impl.clone(), req))\n");
+    buf.push_str(
+      "          ::hyper::service::service_fn(move |req| Self::route(service_impl.clone(), req))\n",
+    );
     buf.push_str("        })\n");
     buf.push_str("        .map_err(|e| eprintln!(\"server error: {}\", e));");
     buf.push_str("      server\n");
@@ -88,25 +96,34 @@ impl Twirp {
     buf.push_str("    if req.method() != ::hyper::Method::POST {\n");
     buf.push_str(
       "      return Box::new(::futures::future::ok(\
-        ::hyper::Response::new(::hyper::Body::from(\"method not found\"))\
+       ::hyper::Response::new(::hyper::Body::from(\"method not found\"))\
        ));\n",
     );
     buf.push_str("    }\n");
     buf.push_str("    // cloning to transfer ownership to the future\n");
     buf.push_str("    let uri = req.uri().clone();\n");
-    buf.push_str("    let fut = req.into_body().concat2().and_then(move |body: ::hyper::Chunk| {\n");
+    buf
+      .push_str("    let fut = req.into_body().concat2().and_then(move |body: ::hyper::Chunk| {\n");
     buf.push_str("    let json_result = match uri.path() {\n");
     for m in s.methods.iter() {
-     buf.push_str(&format!("      \"/twirp/{}/{}\" => {{\n", s.package, m.proto_name));
-     buf.push_str(&format!("        let rpc_req = match serde_json::from_slice::<{}>(&body) {{\n", m.input_type));
-    buf.push_str(          "          Ok(rpc_req) => rpc_req,\n");
-    buf.push_str(&format!("          Err(e) => return ::futures::future::ok(\
-        ::hyper::Response::new(::hyper::Body::from(format!(\"error deserializing {}: {{}}\", e)))\
-       ),\n",
-       m.input_type,
-    ));
-     buf.push_str(         "        };\n");
-     buf.push_str(&format!("        match service_impl.{}(rpc_req) {{
+      buf.push_str(&format!(
+        "      \"/twirp/{}/{}\" => {{\n",
+        s.package, m.proto_name
+      ));
+      buf.push_str(&format!(
+        "        let rpc_req = match serde_json::from_slice::<{}>(&body) {{\n",
+        m.input_type
+      ));
+      buf.push_str("          Ok(rpc_req) => rpc_req,\n");
+      buf.push_str(&format!(
+        "          Err(e) => return ::futures::future::ok(\
+         ::hyper::Response::new(::hyper::Body::from(format!(\"error deserializing {}: {{}}\", e)))\
+         ),\n",
+        m.input_type,
+      ));
+      buf.push_str("        };\n");
+      buf.push_str(&format!(
+        "        match service_impl.{}(rpc_req) {{
           Ok(rpc_res) => serde_json::to_string(&rpc_res),
           Err(err_res) => serde_json::to_string(&err_res),
         }}\n",
@@ -114,22 +131,24 @@ impl Twirp {
       ));
       buf.push_str("    },\n");
     }
-    buf.push_str("      _ => return ::futures::future::ok(\
-        ::hyper::Response::new(::hyper::Body::from(\"route not found\"))\
+    buf.push_str(
+      "      _ => return ::futures::future::ok(\
+       ::hyper::Response::new(::hyper::Body::from(\"route not found\"))\
        ),\n",
     );
     buf.push_str("    };\n");
     buf.push_str("    let json_resp = match json_result {\n");
     buf.push_str("      Ok(s) => s,\n");
-    buf.push_str("      Err(e) => return ::futures::future::ok(\
-        ::hyper::Response::new(::hyper::Body::from(\
-          format!(\"serialization error: {}\", e)\
+    buf.push_str(
+      "      Err(e) => return ::futures::future::ok(\
+       ::hyper::Response::new(::hyper::Body::from(\
+       format!(\"serialization error: {}\", e)\
        ))),\n",
     );
     buf.push_str("    };\n");
     buf.push_str(
       "    ::futures::future::ok(\
-        ::hyper::Response::new(::hyper::Body::from(json_resp))\
+       ::hyper::Response::new(::hyper::Body::from(json_resp))\
        )\n",
     );
     buf.push_str("  });\n");
