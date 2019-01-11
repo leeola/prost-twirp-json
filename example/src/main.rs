@@ -3,6 +3,9 @@ extern crate prost_derive;
 extern crate prost_yat;
 extern crate hyper;
 extern crate futures;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde;
 
 use prost_yat::*;
 

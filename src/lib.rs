@@ -4,7 +4,7 @@ extern crate serde;
 
 use std::convert::From;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Error {
   code: ErrorCode,
   msg: String,
@@ -13,7 +13,7 @@ pub struct Error {
   // meta: Option<HashMap>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum ErrorCode {
   Canceled,
   Unknown,

@@ -94,25 +94,23 @@ impl Twirp {
        ));\n",
     );
     buf.push_str("    }\n");
-    buf.push_str("    match req.uri().path() {\n");
+    buf.push_str("    let json_res = match req.uri().path() {\n");
     for m in s.methods.iter() {
+      // serde_json::to_string(&rpc_res)
      buf.push_str(&format!(
-      "      \"/twirp/{}/{}\" => return Box::new(::futures::future::ok(\
-        ::hyper::Response::new(::hyper::Body::from(\"rpc call not implemented\"))\
-       )),\n",
+      "      \"/twirp/{}/{}\" => match service_impl.make_hat(Size{{inches: 1}}) {{
+          Ok(rpc_res) => serde_json::to_string(&rpc_res).expect(\"serialize error\"),
+          Err(err_res) => serde_json::to_string(&err_res).expect(\"serialize error\"),
+        }},\n",
        s.package,
        m.proto_name,
     ));
     }
-    buf.push_str(
-      "      _ => return Box::new(::futures::future::ok(\
-        ::hyper::Response::new(::hyper::Body::from(\"route not found\"))\
-       )),\n",
-    );
-    buf.push_str("    }\n");
+    buf.push_str("      _ => \"route not found\".to_string(),\n");
+    buf.push_str("    };\n");
     buf.push_str(
       "    Box::new(::futures::future::ok(\
-        ::hyper::Response::new(::hyper::Body::from(\"not implemented\"))\
+        ::hyper::Response::new(::hyper::Body::from(json_res))\
        ))\n",
     );
     buf.push_str("  }\n");
