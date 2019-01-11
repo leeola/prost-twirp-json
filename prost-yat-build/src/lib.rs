@@ -56,7 +56,6 @@ impl Twirp {
 
     // moving self into listen, so it can be moved into the closure.
     buf.push_str("  pub fn listen(self, addr: ::std::net::SocketAddr) {\n");
-    buf.push_str("    use ::futures::Future;\n");
     buf.push_str("    let service_impl = ::std::sync::Arc::new(self.service_impl);\n");
     buf.push_str("    ::hyper::rt::run(::futures::future::lazy(move || {\n");
     buf.push_str("      let server = ::hyper::Server::bind(&addr)\n");
@@ -80,21 +79,23 @@ impl Twirp {
     // moving self into listen, so it can be moved into the closure.
     buf.push_str(&format!(
       "  fn route(
-        service_impl: ::std::sync::Arc<{}>,
+        service_impl: ::std::sync::Arc<S>,
         req: ::hyper::Request<::hyper::Body>
       ) -> Box<\
-        ::futures::Future<Item = ::hyper::Response<::hyper::Body>, Error = hyper::Error\
+        ::futures::Future<Item = ::hyper::Response<::hyper::Body>, Error = ::hyper::Error\
       > + Send> {{\n",
-      s.name,
     ));
-    buf.push_str("    if req.method() != ::hyper::Method::POST { \n");
+    buf.push_str("    if req.method() != ::hyper::Method::POST {\n");
     buf.push_str(
       "      return Box::new(::futures::future::ok(\
         ::hyper::Response::new(::hyper::Body::from(\"method not found\"))\
        ));\n",
     );
     buf.push_str("    }\n");
-    buf.push_str("    let json_result = match req.uri().path() {\n");
+    buf.push_str("    // cloning to transfer ownership to the future\n");
+    buf.push_str("    let uri = req.uri().clone();\n");
+    buf.push_str("    let fut = req.into_body().concat2().and_then(move |body: ::hyper::Chunk| {\n");
+    buf.push_str("    let json_result = match uri.path() {\n");
     for m in s.methods.iter() {
      buf.push_str(&format!("      \"/twirp/{}/{}\" => {{\n", s.package, m.proto_name));
      // buf.push_str(&format!("        match \n", s.package, m.proto_name));
@@ -105,24 +106,26 @@ impl Twirp {
       ));
       buf.push_str("    },\n");
     }
-    buf.push_str("      _ => return Box::new(::futures::future::ok(\
+    buf.push_str("      _ => return ::futures::future::ok(\
         ::hyper::Response::new(::hyper::Body::from(\"route not found\"))\
-       )),\n",
+       ),\n",
     );
     buf.push_str("    };\n");
     buf.push_str("    let json_resp = match json_result {\n");
     buf.push_str("      Ok(s) => s,\n");
-    buf.push_str("      Err(e) => return Box::new(::futures::future::ok(\
+    buf.push_str("      Err(e) => return ::futures::future::ok(\
         ::hyper::Response::new(::hyper::Body::from(\
           format!(\"serialization error: {}\", e)\
-       )))),\n",
+       ))),\n",
     );
     buf.push_str("    };\n");
     buf.push_str(
-      "    Box::new(::futures::future::ok(\
+      "    ::futures::future::ok(\
         ::hyper::Response::new(::hyper::Body::from(json_resp))\
-       ))\n",
+       )\n",
     );
+    buf.push_str("  });\n");
+    buf.push_str("  Box::new(fut)\n");
     buf.push_str("  }\n");
   }
 
@@ -141,5 +144,9 @@ impl ServiceGenerator for Twirp {
     buf.push_str("\n");
     self.write_trait(&s, buf);
     self.write_server(&s, buf);
+  }
+
+  fn finalize(&mut self, buf: &mut String) {
+    buf.push_str("use ::hyper::rt::{Future, Stream};");
   }
 }
