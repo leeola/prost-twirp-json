@@ -96,15 +96,14 @@ impl Twirp {
     buf.push_str("    }\n");
     buf.push_str("    let json_result = match req.uri().path() {\n");
     for m in s.methods.iter() {
-      // serde_json::to_string(&rpc_res)
-     buf.push_str(&format!(
-      "      \"/twirp/{}/{}\" => match service_impl.make_hat(Size{{inches: 1}}) {{
+     buf.push_str(&format!("      \"/twirp/{}/{}\" => {{\n", s.package, m.proto_name));
+     // buf.push_str(&format!("        match \n", s.package, m.proto_name));
+     buf.push_str(&format!("        match service_impl.make_hat(Size{{inches: 1}}) {{
           Ok(rpc_res) => serde_json::to_string(&rpc_res),
           Err(err_res) => serde_json::to_string(&err_res),
-        }},\n",
-       s.package,
-       m.proto_name,
-    ));
+        }}\n",
+      ));
+      buf.push_str("    },\n");
     }
     buf.push_str("      _ => return Box::new(::futures::future::ok(\
         ::hyper::Response::new(::hyper::Body::from(\"route not found\"))\
