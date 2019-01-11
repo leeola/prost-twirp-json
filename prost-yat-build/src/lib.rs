@@ -98,11 +98,19 @@ impl Twirp {
     buf.push_str("    let json_result = match uri.path() {\n");
     for m in s.methods.iter() {
      buf.push_str(&format!("      \"/twirp/{}/{}\" => {{\n", s.package, m.proto_name));
-     // buf.push_str(&format!("        match \n", s.package, m.proto_name));
-     buf.push_str(&format!("        match service_impl.make_hat(Size{{inches: 1}}) {{
+     buf.push_str(&format!("        let rpc_req = match serde_json::from_slice::<{}>(&body) {{\n", m.input_type));
+    buf.push_str(          "          Ok(rpc_req) => rpc_req,\n");
+    buf.push_str(&format!("          Err(e) => return ::futures::future::ok(\
+        ::hyper::Response::new(::hyper::Body::from(format!(\"error deserializing {}: {{}}\", e)))\
+       ),\n",
+       m.input_type,
+    ));
+     buf.push_str(         "        };\n");
+     buf.push_str(&format!("        match service_impl.{}(rpc_req) {{
           Ok(rpc_res) => serde_json::to_string(&rpc_res),
           Err(err_res) => serde_json::to_string(&err_res),
         }}\n",
+        m.name,
       ));
       buf.push_str("    },\n");
     }
