@@ -21,7 +21,7 @@ fn main() {
 
 struct Haber;
 impl proto::Haberdasher for Haber {
-  fn make_hat(&self, r: proto::Size) -> Result<proto::Hat, Error> {
+  fn make_hat(&self, _r: proto::Size) -> Result<proto::Hat, Error> {
     Err("make_hat not implemented".into())
   }
 }
