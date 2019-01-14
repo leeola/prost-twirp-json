@@ -2,11 +2,13 @@ extern crate prost_build;
 
 use prost_build::{Method, Service, ServiceGenerator};
 
-pub struct Twirp;
+pub struct Twirp {
+  service_count: u16,
+}
 
 impl Twirp {
   pub fn new() -> Twirp {
-    Twirp {}
+    Twirp {service_count: 0}
   }
 
   fn write_trait(&self, service: &Service, buf: &mut String) {
@@ -170,12 +172,15 @@ impl Twirp {
 
 impl ServiceGenerator for Twirp {
   fn generate(&mut self, s: Service, buf: &mut String) {
+    self.service_count += 1;
     buf.push_str("\n");
     self.write_trait(&s, buf);
     self.write_server(&s, buf);
   }
 
   fn finalize(&mut self, buf: &mut String) {
-    buf.push_str("use ::hyper::rt::{Future, Stream};");
+    if self.service_count > 0 {
+      buf.push_str("use ::hyper::rt::{Future, Stream};");
+    }
   }
 }
