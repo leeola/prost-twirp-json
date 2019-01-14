@@ -1,6 +1,5 @@
 #!/usr/bin/env sh
 echo "generating example output."
-set -e
 echo "building.."
 cargo build
 echo "copying generated source"
