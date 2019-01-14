@@ -27,14 +27,16 @@ impl Twirp {
 
   fn write_server(&self, s: &Service, buf: &mut String) {
     buf.push_str(&format!(
-      "pub struct {}<S: Haberdasher+Send+Sync+'static> {{\n",
-      self.server_type(s)
+      "pub struct {}<S: {}+Send+Sync+'static> {{\n",
+      self.server_type(s),
+      s.name,
     ));
     buf.push_str(&format!("  service_impl: S,\n"));
     buf.push_str("}\n\n");
     buf.push_str(&format!(
-      "impl<S: Haberdasher+Send+Sync+'static> {}<S> {{",
-      self.server_type(s)
+      "impl<S: {}+Send+Sync+'static> {}<S> {{",
+      s.name,
+      self.server_type(s),
     ));
     self.write_func_new(s, buf);
     self.write_func_listen(s, buf);
