@@ -6,7 +6,11 @@ extern crate futures;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde;
+extern crate log;
+extern crate env_logger;
 
+use env_logger::Env;
+use log::info;
 use prost_yat::*;
 
 mod proto {
@@ -14,8 +18,11 @@ mod proto {
 }
 
 fn main() {
+  let env = Env::new().filter_or("RUST_LOG", "info");
+  env_logger::init_from_env(env);
+
   let s = proto::HaberdasherServer::<Haber>::new(Haber{});
-  println!("starting server..");
+  info!("starting server..");
   s.listen(([127, 0, 0, 1], 3000).into());
 }
 

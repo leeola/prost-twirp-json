@@ -108,7 +108,8 @@ impl Twirp {
     buf.push_str("    let uri = req.uri().clone();\n");
     buf
       .push_str("    let fut = req.into_body().concat2().and_then(move |body: ::hyper::Chunk| {\n");
-    buf.push_str("      let json_result = match uri.path() {\n");
+    buf.push_str("      let path = uri.path();\n");
+    buf.push_str("      let json_result = match path {\n");
     for m in s.methods.iter() {
       buf.push_str(&format!(
         "        \"/twirp/{}/{}\" => {{\n",
@@ -128,9 +129,17 @@ impl Twirp {
       buf.push_str("          };\n");
       buf.push_str(&format!(
         "          match service_impl.{}(rpc_req) {{
-            Ok(rpc_res) => serde_json::to_string(&rpc_res),
-            Err(err_res) => serde_json::to_string(&err_res),
+            Ok(rpc_res) => {{
+              info!(\"twirp RPC {} responded Ok\");
+              serde_json::to_string(&rpc_res)
+            }}
+            Err(err_res) => {{
+              error!(\"twirp RPC {} requested Err({{:?}})\", &err_res);
+              serde_json::to_string(&err_res)
+            }}
           }}\n",
+        m.name,
+        m.name,
         m.name,
       ));
       buf.push_str("      },\n");
@@ -180,6 +189,7 @@ impl ServiceGenerator for Twirp {
 
   fn finalize(&mut self, buf: &mut String) {
     if self.service_count > 0 {
+      buf.push_str("use log::{info, error};");
       buf.push_str("use ::hyper::rt::{Future, Stream};");
     }
   }

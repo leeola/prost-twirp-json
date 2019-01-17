@@ -62,15 +62,22 @@ impl<S: Haberdasher+Send+Sync+'static> HaberdasherServer<S> {
     // cloning to transfer ownership to the future
     let uri = req.uri().clone();
     let fut = req.into_body().concat2().and_then(move |body: ::hyper::Chunk| {
-      let json_result = match uri.path() {
+      let path = uri.path();
+      let json_result = match path {
         "/twirp/twitch.twirp.example/MakeHat" => {
           let rpc_req = match serde_json::from_slice::<Size>(&body) {
             Ok(rpc_req) => rpc_req,
             Err(e) => return ::futures::future::ok(::hyper::Response::new(::hyper::Body::from(format!("error deserializing Size: {}", e)))),
           };
           match service_impl.make_hat(rpc_req) {
-            Ok(rpc_res) => serde_json::to_string(&rpc_res),
-            Err(err_res) => serde_json::to_string(&err_res),
+            Ok(rpc_res) => {
+              info!("twirp RPC make_hat responded Ok");
+              serde_json::to_string(&rpc_res)
+            }
+            Err(err_res) => {
+              error!("twirp RPC make_hat requested Err({:?})", &err_res);
+              serde_json::to_string(&err_res)
+            }
           }
       },
         _ => return ::futures::future::ok(::hyper::Response::new(::hyper::Body::from("route not found"))),
@@ -84,4 +91,4 @@ impl<S: Haberdasher+Send+Sync+'static> HaberdasherServer<S> {
     Box::new(fut)
   }
 }
-use ::hyper::rt::{Future, Stream};
+use log::{info, error};use ::hyper::rt::{Future, Stream};
