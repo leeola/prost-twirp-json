@@ -80,7 +80,7 @@ impl<S: Haberdasher+Send+Sync+'static> HaberdasherServer<S> {
     let fut = req.into_body().concat2().and_then(move |body: ::hyper::Chunk| {
       let path = uri.path();
       let json_result = match path {
-        "/twirp/twitch.twirp.example/MakeHat" => {
+        "/twirp/twitch.twirp.example.Haberdasher/MakeHat" => {
           let rpc_req = match serde_json::from_slice::<Size>(&body) {
             Ok(rpc_req) => rpc_req,
             Err(err) => {

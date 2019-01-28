@@ -128,8 +128,8 @@ impl Twirp {
     buf.push_str("      let json_result = match path {\n");
     for m in s.methods.iter() {
       buf.push_str(&format!(
-        "        \"/twirp/{}/{}\" => {{\n",
-        s.package, m.proto_name
+        "        \"/twirp/{}.{}/{}\" => {{\n",
+        s.package, s.name, m.proto_name,
       ));
       buf.push_str(&format!(
         "          let rpc_req = match serde_json::from_slice::<{}>(&body) {{\n",
