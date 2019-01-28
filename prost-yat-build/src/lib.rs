@@ -8,7 +8,7 @@ pub struct Twirp {
 
 impl Twirp {
   pub fn new() -> Twirp {
-    Twirp {service_count: 0}
+    Twirp { service_count: 0 }
   }
 
   fn write_trait(&self, service: &Service, buf: &mut String) {
@@ -97,12 +97,27 @@ impl Twirp {
         ::futures::Future<Item = ::hyper::Response<::hyper::Body>, Error = ::hyper::Error\
       > + Send> {{\n",
     ));
+    buf.push_str("    let mut response_builder = ::hyper::Response::builder();\n");
+    // a temporary measure to make CORS pass until middleware support is
+    // added. Middleware can then let the caller implement CORS support
+    // however they see fit.
+    buf.push_str("    response_builder.header(\"Access-Control-Allow-Origin\", \"*\");\n");
+    buf.push_str("    response_builder.header(\"Access-Control-Allow-Methods\", \"DELETE, POST, GET, OPTIONS\");\n");
+    buf.push_str("    response_builder.header(\"Access-Control-Allow-Headers\", \"Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With\");\n");
+    // allow preflight
+    buf.push_str("    if req.method() == ::hyper::Method::OPTIONS {\n");
+    buf.push_str("      let resp = response_builder\n");
+    buf.push_str("        .status(::hyper::StatusCode::OK)\n");
+    buf.push_str("        .body(::hyper::Body::from(\"\"))\n");
+    buf.push_str("        .unwrap();\n");
+    buf.push_str("      return Box::new(::futures::future::ok(resp));\n");
+    buf.push_str("    }\n");
     buf.push_str("    if req.method() != ::hyper::Method::POST {\n");
-    buf.push_str(
-      "      return Box::new(::futures::future::ok(\
-       ::hyper::Response::new(::hyper::Body::from(\"method not found\"))\
-       ));\n",
-    );
+    buf.push_str("      let resp = response_builder\n");
+    buf.push_str("        .status(::hyper::StatusCode::METHOD_NOT_ALLOWED)\n");
+    buf.push_str("        .body(::hyper::Body::from(\"method not allowed\"))\n");
+    buf.push_str("        .unwrap();\n");
+    buf.push_str("      return Box::new(::futures::future::ok(resp));\n");
     buf.push_str("    }\n");
     buf.push_str("    // cloning to transfer ownership to the future\n");
     buf.push_str("    let uri = req.uri().clone();\n");
@@ -120,12 +135,18 @@ impl Twirp {
         m.input_type
       ));
       buf.push_str("            Ok(rpc_req) => rpc_req,\n");
+      buf.push_str("            Err(err) => {\n");
       buf.push_str(&format!(
-        "            Err(e) => return ::futures::future::ok(\
-         ::hyper::Response::new(::hyper::Body::from(format!(\"error deserializing {}: {{}}\", e)))\
-         ),\n",
+        "              let err_msg = format!(\"error deserializing {}: {{}}\", err);\n",
         m.input_type,
       ));
+      buf.push_str("              info!(\"{}\", err_msg);\n");
+      buf.push_str("              let resp = response_builder\n");
+      buf.push_str("                .status(::hyper::StatusCode::METHOD_NOT_ALLOWED)\n");
+      buf.push_str("                .body(::hyper::Body::from(err_msg))\n");
+      buf.push_str("                .unwrap();\n");
+      buf.push_str("              return ::futures::future::ok(resp);\n");
+      buf.push_str("            }\n");
       buf.push_str("          };\n");
       buf.push_str(&format!(
         "          match service_impl.{}(rpc_req) {{
@@ -138,17 +159,18 @@ impl Twirp {
               serde_json::to_string(&err_res)
             }}
           }}\n",
-        m.name,
-        m.name,
-        m.name,
+        m.name, m.name, m.name,
       ));
-      buf.push_str("      },\n");
+      buf.push_str("        },\n");
     }
-    buf.push_str(
-      "        _ => return ::futures::future::ok(\
-       ::hyper::Response::new(::hyper::Body::from(\"route not found\"))\
-       ),\n",
-    );
+    buf.push_str("        route => {\n");
+    buf.push_str("              info!(\"route not found: {}\", route);\n");
+    buf.push_str("              let resp = response_builder\n");
+    buf.push_str("                .status(::hyper::StatusCode::NOT_FOUND)\n");
+    buf.push_str("                .body(::hyper::Body::from(\"route not found\"))\n");
+    buf.push_str("                .unwrap();\n");
+    buf.push_str("              return ::futures::future::ok(resp);\n");
+    buf.push_str("        }\n");
     buf.push_str("      };\n");
     buf.push_str("      let json_resp = match json_result {\n");
     buf.push_str("        Ok(s) => s,\n");
@@ -159,11 +181,12 @@ impl Twirp {
        ))),\n",
     );
     buf.push_str("      };\n");
+    buf.push_str("      response_builder.status(::hyper::StatusCode::OK);\n");
     buf.push_str(
-      "      ::futures::future::ok(\
-       ::hyper::Response::new(::hyper::Body::from(json_resp))\
-       )\n",
+      "      let response_result = response_builder.body(::hyper::Body::from(json_resp));\n",
     );
+    buf.push_str("      let response = response_result.expect(\"bad response\");\n");
+    buf.push_str("      ::futures::future::ok(response)\n");
     buf.push_str("    });\n");
     buf.push_str("    Box::new(fut)\n");
     buf.push_str("  }\n");

@@ -56,8 +56,23 @@ impl<S: Haberdasher+Send+Sync+'static> HaberdasherServer<S> {
         service_impl: ::std::sync::Arc<S>,
         req: ::hyper::Request<::hyper::Body>
       ) -> Box<::futures::Future<Item = ::hyper::Response<::hyper::Body>, Error = ::hyper::Error> + Send> {
+    let mut response_builder = ::hyper::Response::builder();
+    response_builder.header("Access-Control-Allow-Origin", "*");
+    response_builder.header("Access-Control-Allow-Methods", "DELETE, POST, GET, OPTIONS");
+    response_builder.header("Access-Control-Allow-Headers", "Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+    if req.method() == ::hyper::Method::OPTIONS {
+      let resp = response_builder
+        .status(::hyper::StatusCode::OK)
+        .body(::hyper::Body::from(""))
+        .unwrap();
+      return Box::new(::futures::future::ok(resp));
+    }
     if req.method() != ::hyper::Method::POST {
-      return Box::new(::futures::future::ok(::hyper::Response::new(::hyper::Body::from("method not found"))));
+      let resp = response_builder
+        .status(::hyper::StatusCode::METHOD_NOT_ALLOWED)
+        .body(::hyper::Body::from("method not allowed"))
+        .unwrap();
+      return Box::new(::futures::future::ok(resp));
     }
     // cloning to transfer ownership to the future
     let uri = req.uri().clone();
@@ -67,7 +82,15 @@ impl<S: Haberdasher+Send+Sync+'static> HaberdasherServer<S> {
         "/twirp/twitch.twirp.example/MakeHat" => {
           let rpc_req = match serde_json::from_slice::<Size>(&body) {
             Ok(rpc_req) => rpc_req,
-            Err(e) => return ::futures::future::ok(::hyper::Response::new(::hyper::Body::from(format!("error deserializing Size: {}", e)))),
+            Err(err) => {
+              let err_msg = format!("error deserializing Size: {}", err);
+              info!("{}", err_msg);
+              let resp = response_builder
+                .status(::hyper::StatusCode::METHOD_NOT_ALLOWED)
+                .body(::hyper::Body::from(err_msg))
+                .unwrap();
+              return ::futures::future::ok(resp);
+            }
           };
           match service_impl.make_hat(rpc_req) {
             Ok(rpc_res) => {
@@ -79,14 +102,24 @@ impl<S: Haberdasher+Send+Sync+'static> HaberdasherServer<S> {
               serde_json::to_string(&err_res)
             }
           }
-      },
-        _ => return ::futures::future::ok(::hyper::Response::new(::hyper::Body::from("route not found"))),
+        },
+        route => {
+              info!("route not found: {}", route);
+              let resp = response_builder
+                .status(::hyper::StatusCode::NOT_FOUND)
+                .body(::hyper::Body::from("route not found"))
+                .unwrap();
+              return ::futures::future::ok(resp);
+        }
       };
       let json_resp = match json_result {
         Ok(s) => s,
         Err(e) => return ::futures::future::ok(::hyper::Response::new(::hyper::Body::from(format!("serialization error: {}", e)))),
       };
-      ::futures::future::ok(::hyper::Response::new(::hyper::Body::from(json_resp)))
+      response_builder.status(::hyper::StatusCode::OK);
+      let response_result = response_builder.body(::hyper::Body::from(json_resp));
+      let response = response_result.expect("bad response");
+      ::futures::future::ok(response)
     });
     Box::new(fut)
   }
