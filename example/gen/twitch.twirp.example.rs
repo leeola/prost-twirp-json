@@ -57,6 +57,7 @@ impl<S: Haberdasher+Send+Sync+'static> HaberdasherServer<S> {
         req: ::hyper::Request<::hyper::Body>
       ) -> Box<::futures::Future<Item = ::hyper::Response<::hyper::Body>, Error = ::hyper::Error> + Send> {
     let mut response_builder = ::hyper::Response::builder();
+    response_builder.header("Content-Type", "application/json");
     response_builder.header("Access-Control-Allow-Origin", "*");
     response_builder.header("Access-Control-Allow-Methods", "DELETE, POST, GET, OPTIONS");
     response_builder.header("Access-Control-Allow-Headers", "Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");

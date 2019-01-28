@@ -101,6 +101,7 @@ impl Twirp {
     // a temporary measure to make CORS pass until middleware support is
     // added. Middleware can then let the caller implement CORS support
     // however they see fit.
+    buf.push_str("    response_builder.header(\"Content-Type\", \"application/json\");\n");
     buf.push_str("    response_builder.header(\"Access-Control-Allow-Origin\", \"*\");\n");
     buf.push_str("    response_builder.header(\"Access-Control-Allow-Methods\", \"DELETE, POST, GET, OPTIONS\");\n");
     buf.push_str("    response_builder.header(\"Access-Control-Allow-Headers\", \"Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With\");\n");
