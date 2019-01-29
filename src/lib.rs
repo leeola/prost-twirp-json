@@ -6,11 +6,11 @@ use std::convert::From;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Error {
-  code: ErrorCode,
-  msg: String,
+  pub code: ErrorCode,
+  pub msg: String,
   // TODO: add some type of generic key/value for arbitrary
   // metadata inclusion.
-  // meta: Option<HashMap>,
+  // pub meta: Option<HashMap>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
