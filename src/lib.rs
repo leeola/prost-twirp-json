@@ -4,6 +4,8 @@ extern crate serde;
 
 use std::convert::From;
 
+pub type Result<T> = std::result::Result<T, Error>;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Error {
   pub code: ErrorCode,
@@ -64,7 +66,7 @@ impl ErrorCode {
 
 impl From<String> for Error {
   fn from(s: String) -> Self {
-    return Error{
+    Error {
       code: ErrorCode::Internal,
       msg: s,
     }
@@ -73,7 +75,7 @@ impl From<String> for Error {
 
 impl From<&'static str> for Error {
   fn from(s: &'static str) -> Self {
-    return Error{
+    Error {
       code: ErrorCode::Internal,
       msg: String::from(s),
     }
