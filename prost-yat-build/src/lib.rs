@@ -142,9 +142,13 @@ impl Twirp {
         m.input_type,
       ));
       buf.push_str("              info!(\"{}\", err_msg);\n");
+      buf.push_str("              let err_json = serde_json::to_string(&::prost_yat::Error{\n");
+      buf.push_str("                code: ::prost_yat::ErrorCode::Internal,\n");
+      buf.push_str("                msg: err_msg,\n");
+      buf.push_str("              }).unwrap_or(\"error message failed to serialize, ironic\".to_owned());\n");
       buf.push_str("              let resp = response_builder\n");
       buf.push_str("                .status(::hyper::StatusCode::METHOD_NOT_ALLOWED)\n");
-      buf.push_str("                .body(::hyper::Body::from(err_msg))\n");
+      buf.push_str("                .body(::hyper::Body::from(err_json))\n");
       buf.push_str("                .unwrap();\n");
       buf.push_str("              return ::futures::future::ok(resp);\n");
       buf.push_str("            }\n");

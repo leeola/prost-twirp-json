@@ -86,9 +86,13 @@ impl<S: Haberdasher+Send+Sync+'static> HaberdasherServer<S> {
             Err(err) => {
               let err_msg = format!("error deserializing Size: {}", err);
               info!("{}", err_msg);
+              let err_json = serde_json::to_string(&::prost_yat::Error{
+                code: ::prost_yat::ErrorCode::Internal,
+                msg: err_msg,
+              }).unwrap_or("error message failed to serialize, ironic".to_owned());
               let resp = response_builder
                 .status(::hyper::StatusCode::METHOD_NOT_ALLOWED)
-                .body(::hyper::Body::from(err_msg))
+                .body(::hyper::Body::from(err_json))
                 .unwrap();
               return ::futures::future::ok(resp);
             }
